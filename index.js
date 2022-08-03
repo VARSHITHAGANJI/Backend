@@ -36,6 +36,25 @@ const studentSchema = new mongoose.Schema(
 const Student = mongoose.model("Student",studentSchema,'Student');
 
 
+function replacer(key, value) {
+    if(key === "data")
+    {
+      for(var k in value){
+        if(k==='phoneNumber' || k ==='Age')
+        {
+          value[k] =  Number(value[k]);
+        }
+        if(k === 'isStudent'){
+            value[k] =  Boolean(value[k]);
+          }
+          else{
+            value[k] =  value[k];
+          }
+      }
+    }
+    return value;
+  }
+
 //Create POST request to create route
 //Request is in form of Javascript object
 //Save the data inside the request to Student collection inside mongodb database
@@ -52,7 +71,7 @@ const postData = req.body;
   {
     //If the document is saved, print the message as success and document saved
     const response = {message : "Success",data: postData};
-    const json_res = JSON.stringify(response,null,'\t').replace(/\\"/g, '"');
+    const json_res = JSON.stringify(response,replacer,'\t').replace(/\\"/g, '"');
     //.replace is used for not escaping double quote characters inside array of strings.
     res.send(json_res);//send the JSON response
   }
@@ -73,7 +92,7 @@ const record = req.body;//duplicate the request
 delete record["_id"];//removes the _id field from the request
 const fields = Object.keys(record);
 
-const oldfields = Object.keys(studentSchema);
+const oldfields = Object.keys(studentSchema.paths);
 
 // ["name","email","phoneNumber","Age","isStudent","highestQualification","interests"];
 let newfields = fields.filter(x => !oldfields.includes(x));
@@ -83,10 +102,11 @@ for(var i = 0; i < fields.length; i++){
 
  if(oldfields.includes(fields[i]))
  {
-   var update = {};
-   update[fields[i]] = record[fields[i]];
+   
+   var oldupdate = {};
+   oldupdate[fields[i]] = record[fields[i]];
 
-   Student.findOneAndUpdate({_id: given_id},update,{ runValidators: true }, function (err) {
+   Student.findOneAndUpdate({_id: given_id},oldupdate, function (err) {
    if (err) {res.send(err)};
    });
 
@@ -96,11 +116,12 @@ for(var i = 0; i < fields.length; i++){
   var query = {};
   query[fields[i]] = String;
   studentSchema.add(query);
+  console.log(Object.keys(studentSchema.paths));
     //Find the document and update the field
   var update = {};
   update[fields[i]] = record[fields[i]];
 
-  Student.findOneAndUpdate({_id: given_id},update,{ runValidators: true }, function (err) {
+  Student.findOneAndUpdate({_id: given_id},update, function (err) {
   if (err) {res.send(err)};
   });
 }
@@ -112,7 +133,7 @@ Student.findById(given_id,{_id:0,__v:0},function(err,doc){
   if(err){res.send(err);}
   else{
     const response = {message : "Success",data: doc};
-    const json_res = JSON.stringify(response,null,'\t').replace(/\\"/g, '"');
+    const json_res = JSON.stringify(response,replacer,'\t').replace(/\\"/g, '"');
     res.send(json_res);
       }
 
@@ -131,7 +152,7 @@ app.route("/get")
     else{
       const record = doc;
       const response = {message : "Success",data: record};
-      const json_res = JSON.stringify(response,null,'\t').replace(/\\"/g, '"');;
+      const json_res = JSON.stringify(response,replacer,'\t').replace(/\\"/g, '"');;
       res.send(json_res);
     }
 
