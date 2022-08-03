@@ -31,26 +31,6 @@ const studentSchema = new mongoose.Schema(
               default: undefined}]
 });
 
-function replacer(key, value) {
-    if(key === "data")
-    {
-      for(var k in value){
-        if(k==='phoneNumber' || k ==='Age')
-        {
-          value[k] =  Number(value[k]);
-        }
-        if(k === 'isStudent'){
-            value[k] =  Boolean(value[k]);
-          }
-          else{
-            value[k] =  value[k];
-          }
-      }
-    }
-    return value;
-  }
-
-
 
 //Compiling a model which help us create and read documents from the local mongodb database
 const Student = mongoose.model("Student",studentSchema,'Student');
@@ -72,7 +52,7 @@ const postData = req.body;
   {
     //If the document is saved, print the message as success and document saved
     const response = {message : "Success",data: postData};
-    const json_res = JSON.stringify(response,replacer,'\t').replace(/\\"/g, '"');
+    const json_res = JSON.stringify(response,null,'\t').replace(/\\"/g, '"');
     //.replace is used for not escaping double quote characters inside array of strings.
     res.send(json_res);//send the JSON response
   }
@@ -92,36 +72,47 @@ const given_id = req.body._id;//Getting the id of document
 const record = req.body;//duplicate the request
 delete record["_id"];//removes the _id field from the request
 const fields = Object.keys(record);
-console.log(fields);
-console.log(typeof fields);
-const oldfields = ["name","email","phoneNumber","Age","isStudent","highestQualification","interests"];
 
+const oldfields = Object.keys(studentSchema);
 
+// ["name","email","phoneNumber","Age","isStudent","highestQualification","interests"];
 let newfields = fields.filter(x => !oldfields.includes(x));
 
-console.log(newfields);
-for(var i = 0; i < newfields.length; i++){
-  //Check if this field does not exists and add it to the schema
 
+for(var i = 0; i < fields.length; i++){
+
+ if(oldfields.includes(fields[i]))
+ {
+   var update = {};
+   update[fields[i]] = record[fields[i]];
+
+   Student.findOneAndUpdate({_id: given_id},update,{ runValidators: true }, function (err) {
+   if (err) {res.send(err)};
+   });
+
+ }
+ //Check if this field does not exists and add it to the schema
+ else{
   var query = {};
-  query[newfields[i]] = String;
+  query[fields[i]] = String;
   studentSchema.add(query);
     //Find the document and update the field
   var update = {};
-  update[newfields[i]] = record[newfields[i]];
+  update[fields[i]] = record[fields[i]];
 
   Student.findOneAndUpdate({_id: given_id},update,{ runValidators: true }, function (err) {
-  if (err) {res.write(err)};
+  if (err) {res.send(err)};
   });
-
 }
+}
+
 
 //After updating all the fields, send the response
 Student.findById(given_id,{_id:0,__v:0},function(err,doc){
   if(err){res.send(err);}
   else{
     const response = {message : "Success",data: doc};
-    const json_res = JSON.stringify(response,'\t').replace(/\\"/g, '"');
+    const json_res = JSON.stringify(response,null,'\t').replace(/\\"/g, '"');
     res.send(json_res);
       }
 
@@ -140,7 +131,7 @@ app.route("/get")
     else{
       const record = doc;
       const response = {message : "Success",data: record};
-      const json_res = JSON.stringify(response,replacer,'\t').replace(/\\"/g, '"');;
+      const json_res = JSON.stringify(response,null,'\t').replace(/\\"/g, '"');;
       res.send(json_res);
     }
 
